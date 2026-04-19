@@ -1,0 +1,15 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g fill="url(#brand-fill)">
+    <path d="M10 18H24.8C31.4 18 36.2 22.3 36.2 28C36.2 33.3 32 37.4 26 38.1L14.6 26.8H10V18Z" />
+    <path d="M10 31.4H16.6L28.8 43.6H18.2L10 35.4V31.4Z" />
+    <path d="M29.8 18H36L43.2 25.7L50.4 18H56V46H49.1V28.5L43.2 34.9L37.2 28.5V46H29.8V18Z" />
+    <path d="M25.9 18C31.5 18 35.8 22.4 35.8 28C35.8 33.6 31.5 38 25.9 38H20.3V31.3H24.8C27.1 31.3 28.9 29.8 28.9 28C28.9 26.1 27.1 24.7 24.8 24.7H20.3V18H25.9Z" />
+    <path d="M31.3 18.2C35.1 19.4 38.2 22.2 39.8 25.9L35 29.1C34 26.4 32.3 24.2 29.6 22.6L31.3 18.2Z" fill-opacity="0.72" />
+  </g>
+  <defs>
+    <linearGradient id="brand-fill" x1="10" y1="14" x2="54" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8E86F3" />
+      <stop offset="1" stop-color="#4A3BC2" />
+    </linearGradient>
+  </defs>
+</svg>
