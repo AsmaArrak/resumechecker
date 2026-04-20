@@ -170,7 +170,7 @@ export default function HomePage({
           <div style={{ ...cardStyle, ...pricingCardStyle }}>
             <div style={featuredBadgeStyle}>Most Popular</div>
             <div style={pricingTierStyle}>Plus</div>
-            <div style={pricingValueStyle}>$9.99<span style={pricingUnitStyle}>/month</span></div>
+            <div style={pricingValueStyle}>$4.99<span style={pricingUnitStyle}>/month</span></div>
             <div style={pricingSubStyle}>A stronger daily limit for active job seekers who want more room to tailor applications.</div>
             <FeatureList items={plusPlanItems} />
           </div>
@@ -178,7 +178,7 @@ export default function HomePage({
             <div style={featuredBadgeStyle}>High Volume</div>
             <div style={pricingTierDarkStyle}>Pro</div>
             <div style={pricingValueStyle}>
-              <span style={{ color: '#ffffff' }}>$14.99</span>
+              <span style={{ color: '#ffffff' }}>$8.99</span>
               <span style={{ ...pricingUnitStyle, color: '#d6d0ff' }}>/month</span>
             </div>
             <div style={pricingSubDarkStyle}>The highest daily cap for heavier application volume and faster iteration across many roles.</div>

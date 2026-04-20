@@ -10,14 +10,14 @@ export const PLAN_CONFIG = {
     label: 'Plus',
     dailyAnalyses: 12,
     dailyGenerations: 12,
-    monthlyPrice: 9.99,
+    monthlyPrice: 4.99,
     badge: 'Most Popular',
   },
   pro: {
     label: 'Pro',
     dailyAnalyses: 20,
     dailyGenerations: 20,
-    monthlyPrice: 14.99,
+    monthlyPrice: 8.99,
     badge: 'High Volume',
   },
 }
