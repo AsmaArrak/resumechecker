@@ -57,6 +57,20 @@ export default function WorkspacePage({
   viewerStyle,
   PDFViewer,
   ResumePdfDocument,
+  jobRecommendations,
+  jobsLoading,
+  jobsError,
+  openJobsPage,
+  refreshJobs,
+  jobsCarouselStyle,
+  jobCardStyle,
+  jobCardTopStyle,
+  jobTitleStyle,
+  jobCompanyStyle,
+  jobSourcePillStyle,
+  jobMetaStyle,
+  jobApplyLinkStyle,
+  jobsHeaderActionsStyle,
 }) {
   return (
     <section id="workspace" style={workspaceSectionStyle}>
@@ -99,11 +113,7 @@ export default function WorkspacePage({
             </div>
           </div>
         </div>
-      ) : (
-        <div style={usageGuestBannerStyle}>
-          Uploading is open to everyone. Sign in only when you want to run the analysis or generate a resume.
-        </div>
-      )}
+      ) : null}
 
       <div style={inputGridStyle}>
         <div style={cardStyle}>
@@ -185,11 +195,33 @@ export default function WorkspacePage({
 
           <div style={{ ...cardStyle, marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-              <div style={scoreRingStyle}>
-                <span style={{ fontSize: 28, fontWeight: 700, color: '#3C3489', lineHeight: 1 }}>
-                  {result.match_score}
-                </span>
-                <span style={{ fontSize: 10, color: '#7F77DD', marginTop: 2 }}>/ 100</span>
+              <div
+                style={{
+                  ...scoreRingStyle,
+                  background: `conic-gradient(#534AB7 0deg ${Math.max(
+                    0,
+                    Math.min(100, Number(result.match_score) || 0)
+                  ) * 3.6}deg, #ece7fb ${Math.max(0, Math.min(100, Number(result.match_score) || 0)) * 3.6}deg 360deg)`,
+                }}
+              >
+                <div
+                  style={{
+                    width: 94,
+                    height: 94,
+                    borderRadius: '50%',
+                    background: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    boxShadow: 'inset 0 0 0 1px #f0ecfc',
+                  }}
+                >
+                  <span style={{ fontSize: 28, fontWeight: 800, color: '#3C3489', lineHeight: 1 }}>
+                    {result.match_score}
+                  </span>
+                  <span style={{ fontSize: 10, color: '#7F77DD', marginTop: 2 }}>/ 100</span>
+                </div>
               </div>
 
               <div style={{ flex: 1 }}>
@@ -330,6 +362,62 @@ export default function WorkspacePage({
                 <div style={{ fontSize: 14, color: '#3a3050', lineHeight: 1.6 }}>{r}</div>
               </div>
             ))}
+          </div>
+
+          <div style={{ ...cardStyle, marginBottom: '2rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 12,
+                marginBottom: 14,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div>
+                <div style={cardLabelStyle}>Recommended jobs</div>
+                <div style={{ fontSize: 14, color: '#6b5f8a' }}>
+                  Fresh listings related to the job description you just analyzed.
+                </div>
+              </div>
+              <div style={jobsHeaderActionsStyle}>
+                <button type="button" onClick={refreshJobs} disabled={jobsLoading} style={secondaryButtonStyle}>
+                  {jobsLoading ? 'Loading jobs...' : 'Refresh'}
+                </button>
+                <button type="button" onClick={openJobsPage} style={primaryButtonInlineStyle}>
+                  See more
+                </button>
+              </div>
+            </div>
+
+            {jobsError ? <div style={{ ...errorBoxStyle, marginBottom: 12 }}>Jobs: {jobsError}</div> : null}
+
+            {jobRecommendations.length ? (
+              <div style={jobsCarouselStyle}>
+                {jobRecommendations.slice(0, 8).map(job => (
+                  <article key={job.id} style={{ ...jobCardStyle, minWidth: 280 }}>
+                    <div style={jobCardTopStyle}>
+                      <div>
+                        <div style={jobTitleStyle}>{job.title}</div>
+                        <div style={jobCompanyStyle}>{job.company}</div>
+                      </div>
+                      <div style={jobSourcePillStyle}>{job.source}</div>
+                    </div>
+                    <div style={jobMetaStyle}>{job.location}</div>
+                    <a href={job.url} target="_blank" rel="noreferrer" style={jobApplyLinkStyle}>
+                      View job
+                    </a>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 14, color: '#6b5f8a', lineHeight: 1.6 }}>
+                {jobsLoading
+                  ? 'Finding related jobs...'
+                  : 'Related jobs will appear here after the analysis finishes.'}
+              </div>
+            )}
           </div>
 
           {enhancedResume ? (

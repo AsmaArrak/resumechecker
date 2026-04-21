@@ -645,6 +645,86 @@ const recNumStyle = { width: 32, height: 32, borderRadius: '50%', background: '#
 const errorBoxStyle = { background: '#fff1f1', border: '1px solid #f7c8c8', color: '#9d3030', borderRadius: 18, padding: '0.95rem 1rem' }
 const viewerWrapStyle = { borderRadius: 24, overflow: 'hidden', border: '1px solid #ebe4ff', minHeight: 720 }
 const viewerStyle = { width: '100%', height: 720, border: 'none' }
+const jobsHeroStyle = {
+  background: 'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(241,238,255,0.96))',
+  border: '1px solid #e9e1ff',
+  borderRadius: 30,
+  padding: '1.5rem',
+  marginBottom: 20,
+  boxShadow: '0 18px 34px rgba(42, 31, 78, 0.08)',
+}
+const jobsHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-end',
+  gap: 18,
+  flexWrap: 'wrap',
+}
+const jobsHeaderActionsStyle = { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }
+const jobsStatsRowStyle = { display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }
+const jobsStatPillStyle = { ...ctaSupportPillStyle, background: '#ffffff', border: '1px solid #e2dbff' }
+const jobsCarouselStyle = {
+  display: 'flex',
+  gap: 14,
+  overflowX: 'auto',
+  padding: '0.3rem 0.2rem 0.8rem',
+  scrollSnapType: 'x mandatory',
+}
+const jobsGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }
+const jobCardStyle = {
+  background: 'linear-gradient(180deg, #ffffff 0%, #fbfaff 100%)',
+  border: '1px solid #ebe4ff',
+  borderRadius: 28,
+  padding: '1.25rem',
+  boxShadow: '0 16px 30px rgba(42, 31, 78, 0.08)',
+  scrollSnapAlign: 'start',
+  minHeight: 290,
+  display: 'flex',
+  flexDirection: 'column',
+}
+const jobCardTopStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: 12,
+  marginBottom: 12,
+}
+const jobTitleStyle = { color: brandText, fontWeight: 800, fontSize: 18, lineHeight: 1.25 }
+const jobCompanyStyle = { color: brandTextSoft, fontSize: 14, marginTop: 5 }
+const jobMetaStyle = { color: '#65568c', fontSize: 13, lineHeight: 1.5, marginTop: 7 }
+const jobDescriptionStyle = { color: brandTextSoft, fontSize: 14, lineHeight: 1.65, margin: '1rem 0', flex: 1 }
+const jobSourcePillStyle = { ...ctaSupportPillStyle, fontSize: 11, padding: '0.4rem 0.55rem' }
+const jobPillRowStyle = { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }
+const jobInfoPillStyle = {
+  background: '#f3f0ff',
+  color: brandPurpleDark,
+  border: '1px solid #e5ddff',
+  borderRadius: 999,
+  padding: '0.45rem 0.65rem',
+  fontSize: 12,
+  fontWeight: 700,
+}
+const jobFooterStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 12,
+  borderTop: '1px solid #eee9ff',
+  paddingTop: 14,
+  marginTop: 'auto',
+}
+const jobApplyLinkStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: brandPurple,
+  color: brandWhite,
+  borderRadius: 999,
+  padding: '0.65rem 0.85rem',
+  fontWeight: 800,
+  textDecoration: 'none',
+  boxShadow: '0 10px 18px rgba(83,74,183,0.2)',
+}
 const primaryButtonStyle = {
   background: 'linear-gradient(135deg, #6f63d9, #4d42bb)',
   color: brandWhite,
@@ -881,6 +961,24 @@ export {
   errorBoxStyle,
   viewerWrapStyle,
   viewerStyle,
+  jobsHeroStyle,
+  jobsHeaderStyle,
+  jobsHeaderActionsStyle,
+  jobsStatsRowStyle,
+  jobsStatPillStyle,
+  jobsCarouselStyle,
+  jobsGridStyle,
+  jobCardStyle,
+  jobCardTopStyle,
+  jobTitleStyle,
+  jobCompanyStyle,
+  jobMetaStyle,
+  jobDescriptionStyle,
+  jobSourcePillStyle,
+  jobPillRowStyle,
+  jobInfoPillStyle,
+  jobFooterStyle,
+  jobApplyLinkStyle,
   primaryButtonStyle,
   primaryButtonInlineStyle,
   primaryButtonDisabledStyle,

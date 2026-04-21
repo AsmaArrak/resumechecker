@@ -11,6 +11,7 @@ import {
 } from '@react-pdf/renderer'
 import { supabase } from './lib/supabase'
 import { callAiBackend } from './lib/ai'
+import { fetchRecommendedJobs } from './lib/jobs'
 import {
   resetAdminUsage as resetAdminUsageRequest,
   updateAdminRole as updateAdminRoleRequest,
@@ -34,6 +35,7 @@ import DashboardPage from './components/DashboardPage'
 import AdminPage from './components/AdminPage'
 import HomePage from './components/HomePage'
 import WorkspacePage from './components/WorkspacePage'
+import JobsPage from './components/JobsPage'
 import * as appStyles from './styles/appStyles'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -547,6 +549,10 @@ export default function App() {
   const [enhancing, setEnhancing] = useState(false)
   const [enhanceError, setEnhanceError] = useState('')
   const [savingPdf, setSavingPdf] = useState(false)
+  const [jobRecommendations, setJobRecommendations] = useState([])
+  const [jobsLoading, setJobsLoading] = useState(false)
+  const [jobsError, setJobsError] = useState('')
+  const [latestJobQueryLabel, setLatestJobQueryLabel] = useState('')
   const [activeTestimonial, setActiveTestimonial] = useState(0)
   const [session, setSession] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
@@ -1014,6 +1020,8 @@ export default function App() {
     setEnhanceError('')
     setResult(null)
     setEnhancedResume(null)
+    setJobRecommendations([])
+    setJobsError('')
 
     try {
       const arrayBuffer = await file.arrayBuffer()
@@ -1085,6 +1093,8 @@ IMPORTANT:
 - percentile should be a cautious estimate based on fit strength, not a random claim.
 - recommendations must contain exactly 3 items.
 - requirements_assessment must contain 4 to 8 items.
+- target_role must be the exact role title or closest role title from the job description.
+- job_search_keywords must contain 2 to 5 concrete role keywords from the job description.
 
 Return ONLY this JSON structure:
 {
@@ -1098,6 +1108,8 @@ Return ONLY this JSON structure:
   "score_label": "Strong match",
   "percentile": "Top 25%",
   "summary": "string",
+  "target_role": "Frontend Developer",
+  "job_search_keywords": ["React", "TypeScript", "Accessibility"],
   "matched_skills": ["string"],
   "missing_skills": ["string"],
   "critical_gaps": ["string"],
@@ -1133,6 +1145,8 @@ ${jobDescription}`,
         score_label: parsed.score_label || 'Partial match',
         percentile: parsed.percentile || '',
         summary: parsed.summary || '',
+        target_role: parsed.target_role || '',
+        job_search_keywords: Array.isArray(parsed.job_search_keywords) ? parsed.job_search_keywords.slice(0, 5) : [],
         matched_skills: Array.isArray(parsed.matched_skills) ? parsed.matched_skills : [],
         missing_skills: Array.isArray(parsed.missing_skills) ? parsed.missing_skills : [],
         critical_gaps: Array.isArray(parsed.critical_gaps) ? parsed.critical_gaps.slice(0, 4) : [],
@@ -1142,10 +1156,48 @@ ${jobDescription}`,
             ? parsed.recommendations.slice(0, 3)
             : [],
       })
+
+      loadRecommendedJobs(jobDescription, {
+        targetRole: parsed.target_role || '',
+        keywords: Array.isArray(parsed.job_search_keywords) ? parsed.job_search_keywords.slice(0, 5) : [],
+      })
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadRecommendedJobs(description = jobDescription, options = {}) {
+    if (!currentUser || !description.trim()) return
+
+    const limit = typeof options === 'number' ? options : options.limit || 8
+    const targetRole = typeof options === 'object' ? options.targetRole || result?.target_role || '' : result?.target_role || ''
+    const keywords =
+      typeof options === 'object' && Array.isArray(options.keywords)
+        ? options.keywords
+        : Array.isArray(result?.job_search_keywords)
+          ? result.job_search_keywords
+          : []
+
+    setJobsLoading(true)
+    setJobsError('')
+
+    try {
+      const jobs = await fetchRecommendedJobs({
+        jobDescription: description,
+        targetRole,
+        keywords,
+        location: profileForm.location || profile?.location || '',
+        limit,
+      })
+
+      setJobRecommendations(jobs)
+      setLatestJobQueryLabel(targetRole || description.trim().split('\n').find(Boolean)?.slice(0, 90) || 'Latest job description')
+    } catch (err) {
+      setJobsError(err.message)
+    } finally {
+      setJobsLoading(false)
     }
   }
 
@@ -1375,6 +1427,23 @@ Return ONLY this exact JSON structure:
     adminDetailCellStyle,
     adminDetailStrongStyle,
     adminActionsCellStyle,
+    jobsHeaderStyle,
+    jobsHeaderActionsStyle,
+    jobsGridStyle,
+    jobCardStyle,
+    jobCardTopStyle,
+    jobTitleStyle,
+    jobCompanyStyle,
+    jobMetaStyle,
+    jobDescriptionStyle,
+    jobSourcePillStyle,
+    jobPillRowStyle,
+    jobInfoPillStyle,
+    jobFooterStyle,
+    jobApplyLinkStyle,
+    jobsHeroStyle,
+    jobsStatsRowStyle,
+    jobsStatPillStyle,
   }
 
   function openAuth(mode = 'signin') {
@@ -1386,6 +1455,15 @@ Return ONLY this exact JSON structure:
 
   function openWorkspace() {
     setCurrentPage('workspace')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openJobsPage() {
+    if (!jobRecommendations.length && jobDescription.trim()) {
+      loadRecommendedJobs(jobDescription, { limit: 24 })
+    }
+
+    setCurrentPage('jobs')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -1735,6 +1813,23 @@ Return ONLY this exact JSON structure:
     adminDetailCellStyle,
     adminDetailStrongStyle,
     adminActionsCellStyle,
+    jobsHeroStyle,
+    jobsHeaderStyle,
+    jobsHeaderActionsStyle,
+    jobsStatsRowStyle,
+    jobsStatPillStyle,
+    jobsGridStyle,
+    jobCardStyle,
+    jobCardTopStyle,
+    jobTitleStyle,
+    jobCompanyStyle,
+    jobMetaStyle,
+    jobDescriptionStyle,
+    jobSourcePillStyle,
+    jobPillRowStyle,
+    jobInfoPillStyle,
+    jobFooterStyle,
+    jobApplyLinkStyle,
   }
 
   const pageShellStyle =
@@ -2006,6 +2101,17 @@ Return ONLY this exact JSON structure:
             />
           ) : null}
 
+          {currentPage === 'jobs' ? (
+            <JobsPage
+              jobRecommendations={jobRecommendations}
+              jobsLoading={jobsLoading}
+              jobsError={jobsError}
+              latestJobQueryLabel={latestJobQueryLabel}
+              openWorkspace={openWorkspace}
+              refreshJobs={() => loadRecommendedJobs(jobDescription, { limit: 24 })}
+              styles={sharedStyles}
+            />
+          ) : null}
 
           {currentPage === 'home' ? (
             <HomePage
@@ -2136,6 +2242,20 @@ Return ONLY this exact JSON structure:
               viewerStyle={viewerStyle}
               PDFViewer={PDFViewer}
               ResumePdfDocument={ResumePdfDocument}
+              jobRecommendations={jobRecommendations}
+              jobsLoading={jobsLoading}
+              jobsError={jobsError}
+              openJobsPage={openJobsPage}
+              refreshJobs={() => loadRecommendedJobs(jobDescription)}
+              jobsCarouselStyle={jobsCarouselStyle}
+              jobCardStyle={jobCardStyle}
+              jobCardTopStyle={jobCardTopStyle}
+              jobTitleStyle={jobTitleStyle}
+              jobCompanyStyle={jobCompanyStyle}
+              jobSourcePillStyle={jobSourcePillStyle}
+              jobMetaStyle={jobMetaStyle}
+              jobApplyLinkStyle={jobApplyLinkStyle}
+              jobsHeaderActionsStyle={jobsHeaderActionsStyle}
             />
           ) : null}
         </div>
@@ -2364,6 +2484,24 @@ const {
   errorBoxStyle,
   viewerWrapStyle,
   viewerStyle,
+  jobsHeaderStyle,
+  jobsHeaderActionsStyle,
+  jobsCarouselStyle,
+  jobsGridStyle,
+  jobCardStyle,
+  jobCardTopStyle,
+  jobTitleStyle,
+  jobCompanyStyle,
+  jobMetaStyle,
+  jobDescriptionStyle,
+  jobSourcePillStyle,
+  jobPillRowStyle,
+  jobInfoPillStyle,
+  jobFooterStyle,
+  jobApplyLinkStyle,
+  jobsHeroStyle,
+  jobsStatsRowStyle,
+  jobsStatPillStyle,
   primaryButtonStyle,
   primaryButtonInlineStyle,
   primaryButtonDisabledStyle,

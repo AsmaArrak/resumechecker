@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.rolematcher-ai]
 verify_jwt = false
+
+[functions.rolematcher-jobs]
+verify_jwt = false
