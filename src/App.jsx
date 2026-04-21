@@ -537,8 +537,35 @@ function CountUpValue({ value, duration = 1400 }) {
   return `${displayValue.toLocaleString()}${suffix}`
 }
 
+const routeMap = {
+  '/': { page: 'home', authMode: 'signin' },
+  '/check-scores': { page: 'workspace', authMode: 'signin' },
+  '/workspace': { page: 'workspace', authMode: 'signin' },
+  '/dashboard': { page: 'dashboard', authMode: 'signin' },
+  '/admin': { page: 'admin', authMode: 'signin' },
+  '/jobs': { page: 'jobs', authMode: 'signin' },
+  '/sign-in': { page: 'auth', authMode: 'signin' },
+  '/create-account': { page: 'auth', authMode: 'create' },
+}
+
+function getRouteState() {
+  if (typeof window === 'undefined') return routeMap['/']
+  return routeMap[window.location.pathname] || routeMap['/']
+}
+
+function pathForPage(page, mode = 'signin') {
+  if (page === 'home') return '/'
+  if (page === 'workspace') return '/check-scores'
+  if (page === 'dashboard') return '/dashboard'
+  if (page === 'admin') return '/admin'
+  if (page === 'jobs') return '/jobs'
+  if (page === 'auth') return mode === 'create' ? '/create-account' : '/sign-in'
+  return '/'
+}
+
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('home')
+  const initialRoute = getRouteState()
+  const [currentPage, setCurrentPage] = useState(initialRoute.page)
   const [jobDescription, setJobDescription] = useState('')
   const [resumeText, setResumeText] = useState('')
   const [fileName, setFileName] = useState('')
@@ -557,10 +584,11 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [authMode, setAuthMode] = useState('signin')
+  const [authMode, setAuthMode] = useState(initialRoute.authMode)
   const [authError, setAuthError] = useState('')
   const [authNotice, setAuthNotice] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
+  const [authReady, setAuthReady] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
   const [dashboardTab, setDashboardTab] = useState('personal')
   const [authForm, setAuthForm] = useState({
@@ -603,6 +631,35 @@ export default function App() {
     generationsUsed: 0,
   })
 
+  function navigateTo(page, options = {}) {
+    const nextAuthMode = options.authMode || authMode
+    const nextPath = pathForPage(page, nextAuthMode)
+
+    setCurrentPage(page)
+    if (page === 'auth') setAuthMode(nextAuthMode)
+
+    if (typeof window !== 'undefined' && window.location.pathname !== nextPath) {
+      const historyAction = options.replace ? 'replaceState' : 'pushState'
+      window.history[historyAction]({ page, authMode: nextAuthMode }, '', nextPath)
+    }
+
+    if (!options.skipScroll) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  useEffect(() => {
+    function handlePopState() {
+      const route = getRouteState()
+      setCurrentPage(route.page)
+      setAuthMode(route.authMode)
+      setAuthError('')
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
   useEffect(() => {
     const timer = window.setInterval(() => {
       setActiveTestimonial(current => (current + 1) % testimonials.length)
@@ -638,6 +695,15 @@ export default function App() {
   }, [authNotice])
 
   useEffect(() => {
+    if (!authReady || currentUser) return
+    if (!['dashboard', 'admin'].includes(currentPage)) return
+
+    setPostAuthPage(currentPage)
+    setAuthNotice('Sign in first to open that page.')
+    navigateTo('auth', { authMode: 'signin', replace: true })
+  }, [authReady, currentPage, currentUser])
+
+  useEffect(() => {
     let mounted = true
 
     async function bootstrapAuth() {
@@ -647,11 +713,13 @@ export default function App() {
 
       if (sessionError) {
         setAuthError(sessionError.message)
+        setAuthReady(true)
         return
       }
 
       setSession(data.session)
       setCurrentUser(data.session?.user ?? null)
+      setAuthReady(true)
     }
 
     bootstrapAuth()
@@ -660,6 +728,7 @@ export default function App() {
       if (!mounted) return
       setSession(nextSession)
       setCurrentUser(nextSession?.user ?? null)
+      setAuthReady(true)
       if (!nextSession?.user) {
         setProfile(null)
         setSubscription(null)
@@ -1447,15 +1516,12 @@ Return ONLY this exact JSON structure:
   }
 
   function openAuth(mode = 'signin') {
-    setAuthMode(mode)
     setAuthError('')
-    setCurrentPage('auth')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    navigateTo('auth', { authMode: mode })
   }
 
   function openWorkspace() {
-    setCurrentPage('workspace')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    navigateTo('workspace')
   }
 
   function openJobsPage() {
@@ -1463,13 +1529,11 @@ Return ONLY this exact JSON structure:
       loadRecommendedJobs(jobDescription, { limit: 24 })
     }
 
-    setCurrentPage('jobs')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    navigateTo('jobs')
   }
 
   function goHome() {
-    setCurrentPage('home')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    navigateTo('home')
   }
 
   function openDashboard() {
@@ -1478,8 +1542,7 @@ Return ONLY this exact JSON structure:
       return
     }
 
-    setCurrentPage('dashboard')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    navigateTo('dashboard')
   }
 
   function openAdmin() {
@@ -1493,8 +1556,7 @@ Return ONLY this exact JSON structure:
       return
     }
 
-    setCurrentPage('admin')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    navigateTo('admin')
   }
 
   function handleAuthFieldChange(field, value) {
@@ -1529,13 +1591,13 @@ Return ONLY this exact JSON structure:
 
     if (!signUpData?.user || signUpData.user.identities?.length === 0) {
       setAuthError('An account with this email already exists. Sign in instead.')
-      setAuthMode('signin')
+      navigateTo('auth', { authMode: 'signin', replace: true, skipScroll: true })
       setAuthForm(current => ({ ...current, email: normalizedEmail, password: '' }))
       return
     }
 
     setAuthNotice('Account created. Check your email to confirm your address before signing in.')
-    setAuthMode('signin')
+    navigateTo('auth', { authMode: 'signin', replace: true, skipScroll: true })
     setAuthForm(current => ({ ...current, email: normalizedEmail, password: '' }))
   }
 
@@ -1557,7 +1619,7 @@ Return ONLY this exact JSON structure:
       return
     }
 
-    setCurrentPage(postAuthPage || 'dashboard')
+    navigateTo(postAuthPage || 'dashboard', { replace: true })
     setAuthNotice('Signed in successfully.')
   }
 
@@ -1568,7 +1630,17 @@ Return ONLY this exact JSON structure:
       return
     }
 
-    setCurrentPage('home')
+    setJobDescription('')
+    setResumeText('')
+    setFileName('')
+    setResult(null)
+    setError('')
+    setEnhancedResume(null)
+    setEnhanceError('')
+    setJobRecommendations([])
+    setJobsError('')
+    setLatestJobQueryLabel('')
+    navigateTo('home', { replace: true })
     setAuthNotice('Signed out.')
   }
 
@@ -1901,10 +1973,18 @@ Return ONLY this exact JSON structure:
             </>
           ) : (
             <>
-              <button type="button" onClick={() => openAuth('signin')} style={navLinkStyle}>
+              <button
+                type="button"
+                onClick={() => openAuth('signin')}
+                style={currentPage === 'auth' && authMode === 'signin' ? navLinkActiveStyle : navLinkStyle}
+              >
                 Sign in
               </button>
-              <button type="button" onClick={() => openAuth('create')} style={navLinkActiveStyle}>
+              <button
+                type="button"
+                onClick={() => openAuth('create')}
+                style={currentPage === 'auth' && authMode === 'create' ? navLinkActiveStyle : navLinkStyle}
+              >
                 Create account
               </button>
             </>
@@ -2035,7 +2115,7 @@ Return ONLY this exact JSON structure:
           {currentPage === 'auth' ? (
             <AuthPage
               authMode={authMode}
-              setAuthMode={setAuthMode}
+              setAuthMode={mode => navigateTo('auth', { authMode: mode })}
               authForm={authForm}
               handleAuthFieldChange={handleAuthFieldChange}
               handleSignIn={handleSignIn}
