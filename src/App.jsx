@@ -23,6 +23,7 @@ import {
   compactResume,
   formatCountdown,
   formatCurrency,
+  formatPercentileLabel,
   formatResetTime,
   getPlanConfig,
   normalizeArray,
@@ -1159,7 +1160,7 @@ IMPORTANT:
 - Reward quantified outcomes, ownership, scope, and relevant tool/domain alignment.
 - Do not over-penalize wording differences when the same capability is clearly demonstrated.
 - summary must be 1 sentence, maximum 24 words.
-- percentile should be a cautious estimate based on fit strength, not a random claim.
+- percentile must use this exact wording style: "Top 10%", "Top 20%", "Top 30%", "Top 45%", "Middle 50%", or "Bottom 50%". Do not return ordinal wording like "70th".
 - recommendations must contain exactly 3 items.
 - requirements_assessment must contain 4 to 8 items.
 - target_role must be the exact role title or closest role title from the job description.
@@ -1174,19 +1175,19 @@ Return ONLY this JSON structure:
     "achievements_score": 0,
     "preferred_qualifications_score": 0
   },
-  "score_label": "Strong match",
-  "percentile": "Top 25%",
+  "score_label": "string",
+  "percentile": "string",
   "summary": "string",
-  "target_role": "Frontend Developer",
-  "job_search_keywords": ["React", "TypeScript", "Accessibility"],
+  "target_role": "",
+  "job_search_keywords": [],
   "matched_skills": ["string"],
   "missing_skills": ["string"],
   "critical_gaps": ["string"],
   "requirements_assessment": [
     {
       "requirement": "string",
-      "priority": "must-have",
-      "verdict": "met",
+      "priority": "must-have or preferred",
+      "verdict": "met or partial or missing",
       "evidence": "string"
     }
   ],
@@ -1212,7 +1213,7 @@ ${jobDescription}`,
           preferred_qualifications_score: parsed.score_breakdown?.preferred_qualifications_score ?? 0,
         },
         score_label: parsed.score_label || 'Partial match',
-        percentile: parsed.percentile || '',
+        percentile: formatPercentileLabel(parsed.percentile, parsed.match_score),
         summary: parsed.summary || '',
         target_role: parsed.target_role || '',
         job_search_keywords: Array.isArray(parsed.job_search_keywords) ? parsed.job_search_keywords.slice(0, 5) : [],
@@ -1241,13 +1242,22 @@ ${jobDescription}`,
     if (!currentUser || !description.trim()) return
 
     const limit = typeof options === 'number' ? options : options.limit || 8
-    const targetRole = typeof options === 'object' ? options.targetRole || result?.target_role || '' : result?.target_role || ''
-    const keywords =
+    const cleanKeyword = keyword => {
+      const value = String(keyword || '').trim()
+      if (!value || value.toLowerCase() === 'string') return ''
+      return value
+    }
+    const rawTargetRole = typeof options === 'object' ? options.targetRole || result?.target_role || '' : result?.target_role || ''
+    const targetRole = cleanKeyword(rawTargetRole)
+    const keywords = (
       typeof options === 'object' && Array.isArray(options.keywords)
         ? options.keywords
         : Array.isArray(result?.job_search_keywords)
           ? result.job_search_keywords
           : []
+    )
+      .map(cleanKeyword)
+      .filter(Boolean)
 
     setJobsLoading(true)
     setJobsError('')
@@ -1292,25 +1302,31 @@ ${jobDescription}`,
           {
             role: 'system',
             content:
-              'You are an expert ATS resume editor. Preserve the original resume and make the smallest truthful improvements needed to better match the job description. Never invent facts. Never replace correct original content with weaker paraphrases. Add missing relevant details only when clearly supported by the original resume. Return valid JSON only.',
+              'You are an expert ATS resume strategist. Create the strongest truthful job-targeted resume possible for the job description, aiming for a near-ideal match when the original resume evidence supports it. Never invent facts. You may remove or de-emphasize irrelevant content when it weakens focus for the target role. Return valid JSON only.',
           },
           {
             role: 'user',
             content: `You are improving a resume for a target job description.
 
 VERY IMPORTANT GOAL:
-Do NOT override the candidate's original resume content unnecessarily.
-Keep the original structure, facts, roles, projects, and skills.
-Only strengthen wording, align terminology to the job description, and add missing relevant keywords/details when they are already supported by the original resume.
+Create a more targeted version of the resume for this specific job description.
+Preserve all facts, roles, projects, awards, dates, companies, schools, and truthful skills.
+Strengthen wording, align terminology to the job description, and add missing relevant keywords/details when they are already supported by the original resume.
+It is OK to remove, shorten, or de-emphasize content that is true but not relevant to this target job.
+Do not make tiny cosmetic edits only. If the resume is already strong, still explain what was kept and why in change_summary.
+Optimize the resume as if it will be scored against this rubric: hard requirements 45 points, relevant experience 25 points, achievements 20 points, preferred qualifications 10 points.
+Your goal is to produce the highest truthful score possible, ideally 90+ when the original resume contains enough evidence.
+If the original resume does not support a 90+ match, improve it as much as truthfully possible and explain the remaining limitation in change_summary.kept or change_summary.removed.
 
 PAGE LENGTH RULES:
 - Target a maximum of 2 pages in a standard US Letter PDF resume.
 - Be concise.
 - Keep summary to 2-3 sentences maximum.
 - Keep technical skills compact and avoid repeating tools across categories.
-- For each experience entry, return 2-3 bullets maximum unless the role is highly relevant.
+- For each highly relevant experience entry, return 3 strong bullets maximum. For weaker entries, return 1-2 bullets or omit if not useful.
 - For each project, return 1-2 bullets maximum.
 - Include only the 3 most relevant real projects for the target job description.
+- If an experience, project, or education entry is already strong and relevant for the job description, do not shorten it, summarize it, or weaken it just to be concise.
 - Keep awards concise.
 - Prioritize the most job-relevant content first.
 - If space is tight, shorten bullets instead of adding more sections.
@@ -1318,10 +1334,14 @@ PAGE LENGTH RULES:
 This means:
 - Preserve original experience, education, projects, skills, and awards.
 - Keep the same meaning of the original bullets.
-- Do not delete strong original content unless it is redundant.
+- Do not delete strong relevant original content unless it is redundant.
+- Do not shorten, summarize, or rewrite strong relevant experience, projects, or education unless the edit clearly improves job alignment.
+- Remove or shorten weak, generic, repeated, or job-irrelevant bullets/projects/skills when they distract from the target role.
 - Do not rewrite everything from scratch.
-- Make minimal but high-value improvements.
+- Make high-value improvements, not random rewrites.
 - Follow the job description closely, but stay fully truthful.
+- Return a clear change_summary so the user can see what changed, what was added, what was removed, and what was rewritten.
+- Before writing the output, silently map the job description's must-have requirements to the resume evidence and make sure the generated resume foregrounds that evidence.
 
 The output MUST follow this exact section structure and order:
 1. name
@@ -1333,6 +1353,7 @@ The output MUST follow this exact section structure and order:
 7. experience
 8. projects
 9. awards
+10. change_summary
 
 CRITICAL RULES:
 - Do NOT invent jobs, degrees, projects, companies, certifications, tools, awards, metrics, teams, or achievements.
@@ -1343,14 +1364,20 @@ CRITICAL RULES:
 - Preserve the candidate's original strengths.
 - Keep wording ATS-friendly and aligned to the job description.
 - Experience and project bullets should be polished, concise, and recruiter-friendly.
-- Prefer minimal enhancement over full rewriting.
+- Prefer targeted enhancement over full rewriting.
+- If removing content, only remove it because it is less relevant, redundant, too generic, or space-inefficient for this job.
+- Do not add unsupported qualifications just to chase a high score. High score means high truthful alignment, not exaggeration.
+- Return strict valid JSON only. Every array item must be a double-quoted string or a valid object. No trailing commas. No semicolons between array items. Escape quotation marks inside strings.
 
 HOW TO EDIT:
-- Summary: tailor to the target role using real strengths from the original resume.
-- Technical skills: keep the original categories and add only truthful missing terms already supported.
-- Experience: keep the original role scope and bullet meaning; improve action verbs and align wording to the job description.
-- Projects: preserve original project names and core descriptions; only sharpen wording and add relevant truthful keywords.
-- Awards: keep real awards only.
+- Summary: tailor to the target role using real strengths from the original resume and mirror the target role language.
+- Technical skills: put the most job-critical supported skills first, add supported missing terms, and remove skills that are unrelated to this job if they clutter the resume.
+- Experience: prioritize bullets that prove must-have requirements, tools, domain fit, ownership, and impact. Keep strong relevant bullets intact or lightly sharpen them; rewrite weak bullets into stronger evidence-based bullets without changing facts.
+- Achievements: surface measurable outcomes, scope, quality improvements, leadership, shipped work, users, performance, or business impact when already present or directly inferable from the original resume wording.
+- Projects: keep the most relevant real projects; if a project is already a strong match, preserve its detail instead of summarizing it. Rewrite weaker projects to prove missing requirements and remove or de-emphasize projects that do not support the job description.
+- Education: preserve relevant degrees, coursework, honors, and school details. Do not summarize education if it helps prove the candidate fits the role.
+- Awards: keep real awards only when useful, concise, or impressive.
+- Change summary: be specific and short. Do not say "nothing changed" unless the resume truly needed no edits.
 
 INPUTS:
 
@@ -1370,13 +1397,13 @@ Return ONLY this exact JSON structure:
   "contact": "string",
   "summary": "string",
   "technical_skills": {
-    "Languages": ["string"],
-    "Frontend": ["string"],
-    "Backend": ["string"],
-    "Databases": ["string"],
-    "DevOpsAndTools": ["string"],
-    "CloudPlatforms": ["string"],
-    "DesignAndPM": ["string"]
+    "Languages": [],
+    "Frontend": [],
+    "Backend": [],
+    "Databases": [],
+    "DevOpsAndTools": [],
+    "CloudPlatforms": [],
+    "DesignAndPM": []
   },
   "education": [
     {
@@ -1392,17 +1419,23 @@ Return ONLY this exact JSON structure:
       "company": "string",
       "location": "string",
       "dates": "string",
-      "bullets": ["string"]
+      "bullets": []
     }
   ],
   "projects": [
     {
       "name": "string",
       "subtitle": "string",
-      "bullets": ["string"]
+      "bullets": []
     }
   ],
-  "awards": ["string"]
+  "awards": [],
+  "change_summary": {
+    "added": [],
+    "removed": [],
+    "rewritten": [],
+    "kept": []
+  }
 }`,
           },
         ],

@@ -38,6 +38,26 @@ export function normalizeRequirementAssessments(value) {
     .slice(0, 8)
 }
 
+export function formatPercentileLabel(value, score) {
+  const numericScore = Number(score) || 0
+  const raw = typeof value === 'string' ? value.trim() : ''
+
+  if (/^top\s+\d{1,3}%(\s+of\s+applicants)?$/i.test(raw)) {
+    return raw.replace(/^top/i, 'Top').replace(/\s+of\s+applicants$/i, '') + ' of applicants'
+  }
+
+  if (/^bottom\s+\d{1,3}%(\s+of\s+applicants)?$/i.test(raw)) {
+    return raw.replace(/^bottom/i, 'Bottom').replace(/\s+of\s+applicants$/i, '') + ' of applicants'
+  }
+
+  if (numericScore >= 90) return 'Top 10% of applicants'
+  if (numericScore >= 80) return 'Top 20% of applicants'
+  if (numericScore >= 70) return 'Top 30% of applicants'
+  if (numericScore >= 60) return 'Top 45% of applicants'
+  if (numericScore >= 50) return 'Middle 50% of applicants'
+  return 'Bottom 50% of applicants'
+}
+
 export function compactResume(parsed) {
   const compactExperience = normalizeArray(parsed.experience).map((exp, index) => ({
     ...exp,
@@ -75,6 +95,13 @@ export function compactResume(parsed) {
     experience: compactExperience,
     projects: compactProjects,
     education: parsed.education || [],
+    awards: normalizeArray(parsed.awards),
+    change_summary: {
+      added: normalizeArray(parsed.change_summary?.added).slice(0, 5),
+      removed: normalizeArray(parsed.change_summary?.removed).slice(0, 5),
+      rewritten: normalizeArray(parsed.change_summary?.rewritten).slice(0, 5),
+      kept: normalizeArray(parsed.change_summary?.kept).slice(0, 5),
+    },
   }
 }
 

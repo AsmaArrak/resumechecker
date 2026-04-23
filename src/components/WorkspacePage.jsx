@@ -72,6 +72,23 @@ export default function WorkspacePage({
   jobApplyLinkStyle,
   jobsHeaderActionsStyle,
 }) {
+  const generateResumeButtonStyle = {
+    ...secondaryButtonStyle,
+    background: 'linear-gradient(135deg, #ff3d6e, #c9163f)',
+    color: '#ffffff',
+    border: '1px solid rgba(255, 61, 110, 0.4)',
+    boxShadow: '0 18px 34px rgba(201, 22, 63, 0.28), 0 0 0 6px rgba(255, 61, 110, 0.08)',
+    fontSize: 17,
+    minHeight: 58,
+    letterSpacing: '0.01em',
+  }
+  const generateResumeDisabledStyle = {
+    ...generateResumeButtonStyle,
+    opacity: 0.6,
+    cursor: 'not-allowed',
+    boxShadow: 'none',
+  }
+
   return (
     <section id="workspace" style={workspaceSectionStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'end', flexWrap: 'wrap', marginBottom: 18 }}>
@@ -232,7 +249,7 @@ export default function WorkspacePage({
                   {result.summary}
                 </div>
                 {result.percentile ? (
-                  <div style={percentileBadgeStyle}>{result.percentile} of applicants</div>
+                  <div style={percentileBadgeStyle}>{result.percentile}</div>
                 ) : null}
               </div>
             </div>
@@ -265,9 +282,9 @@ export default function WorkspacePage({
             <button
               onClick={generateResume}
               disabled={enhancing}
-              style={enhancing ? secondaryButtonDisabledStyle : secondaryButtonStyle}
+              style={enhancing ? generateResumeDisabledStyle : generateResumeButtonStyle}
             >
-              {enhancing ? 'Generating your enhanced resume...' : 'Generate my enhanced resume'}
+              {enhancing ? 'Generating your enhanced resume...' : 'Generate a stronger targeted resume'}
             </button>
 
             {enhanceError ? <div style={{ ...errorBoxStyle, marginTop: 10 }}>Error: {enhanceError}</div> : null}
@@ -415,13 +432,50 @@ export default function WorkspacePage({
               <div style={{ fontSize: 14, color: '#6b5f8a', lineHeight: 1.6 }}>
                 {jobsLoading
                   ? 'Finding related jobs...'
-                  : 'Related jobs will appear here after the analysis finishes.'}
+                  : result
+                    ? 'No related jobs found yet. Try Refresh to search again.'
+                    : 'Related jobs will appear here after the analysis finishes.'}
               </div>
             )}
           </div>
 
           {enhancedResume ? (
             <div>
+              <div style={{ ...cardStyle, marginBottom: '1rem' }}>
+                <div style={cardLabelStyle}>What changed in your CV</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                  {[
+                    ['Added', enhancedResume.change_summary?.added || [], '#ecfdf3', '#166534'],
+                    ['Removed or shortened', enhancedResume.change_summary?.removed || [], '#fff7ed', '#9a3412'],
+                    ['Rewritten', enhancedResume.change_summary?.rewritten || [], '#f1eeff', '#3C3489'],
+                    ['Kept because relevant', enhancedResume.change_summary?.kept || [], '#f8f6ff', '#5a4a7a'],
+                  ].map(([label, items, background, color]) => (
+                    <div
+                      key={label}
+                      style={{
+                        border: '1px solid #ece7fb',
+                        borderRadius: 18,
+                        background,
+                        padding: '1rem',
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, color, marginBottom: 8 }}>{label}</div>
+                      {items.length ? (
+                        <ul style={{ margin: 0, paddingLeft: 18, color: '#3a3050', lineHeight: 1.55, fontSize: 14 }}>
+                          {items.map((item, index) => (
+                            <li key={`${label}-${index}`}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div style={{ color: '#6b5f8a', fontSize: 14, lineHeight: 1.55 }}>
+                          No major changes in this category.
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div
                 style={{
                   display: 'flex',

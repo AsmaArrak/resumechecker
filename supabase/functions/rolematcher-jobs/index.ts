@@ -79,6 +79,33 @@ function scoreJob(job: any, targetRole: string, keywords: string[]) {
   return score
 }
 
+function uniqueJobs(jobs: any[]) {
+  const seen = new Set<string>()
+
+  return jobs.filter(job => {
+    const key = String(job?.redirect_url || job?.id || `${job?.title}-${job?.company?.display_name}`)
+      .toLowerCase()
+      .trim()
+
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function uniqueStrings(values: string[]) {
+  const seen = new Set<string>()
+
+  return values
+    .map(value => String(value || '').trim())
+    .filter(value => {
+      const key = value.toLowerCase()
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
 function normalizeJob(job: any, relevanceScore = 0) {
   return {
     id: String(job?.id || job?.redirect_url || crypto.randomUUID()),
@@ -155,56 +182,78 @@ Deno.serve(async request => {
 
     const queryKeywords = keywords.slice(0, 2).join(' ')
     const providerLimit = Math.min(Math.max(limit * 4, 16), 50)
-    const params = new URLSearchParams({
-      app_id: appId,
-      app_key: appKey,
-      what: [query, queryKeywords].filter(Boolean).join(' '),
-      results_per_page: String(providerLimit),
-      sort_by: 'date',
-    })
+    const derivedQuery = deriveSearchQuery(jobDescription)
+    const keywordQuery = keywords.slice(0, 3).join(' ')
+    const searchTerms = uniqueStrings([
+      [query, queryKeywords].filter(Boolean).join(' '),
+      query,
+      targetRole,
+      derivedQuery,
+      keywordQuery,
+    ])
+    const searchPlans = [
+      ...searchTerms.map(term => ({ term, location })),
+      ...searchTerms.map(term => ({ term, location: '' })),
+    ]
 
-    if (location) params.set('where', location)
+    const providerResults: any[] = []
 
-    const response = await fetch(`https://api.adzuna.com/v1/api/jobs/us/search/1?${params.toString()}`)
-    const responseText = await response.text()
-    let data: any = null
+    for (const plan of searchPlans) {
+      const params = new URLSearchParams({
+        app_id: appId,
+        app_key: appKey,
+        what: plan.term,
+        results_per_page: String(providerLimit),
+        sort_by: 'date',
+      })
 
-    try {
-      data = responseText ? JSON.parse(responseText) : null
-    } catch {
-      return jsonResponse(
-        {
-          ok: false,
-          error:
-            response.status === 401
-              ? 'Adzuna authorization failed. Check that ADZUNA_APP_ID and ADZUNA_APP_KEY match your Adzuna dashboard exactly.'
-              : 'The jobs provider returned a non-JSON response. Check ADZUNA_APP_ID and ADZUNA_APP_KEY in Supabase secrets.',
-        },
-        502
-      )
+      if (plan.location) params.set('where', plan.location)
+
+      const response = await fetch(`https://api.adzuna.com/v1/api/jobs/us/search/1?${params.toString()}`)
+      const responseText = await response.text()
+      let data: any = null
+
+      try {
+        data = responseText ? JSON.parse(responseText) : null
+      } catch {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              response.status === 401
+                ? 'Adzuna authorization failed. Check that ADZUNA_APP_ID and ADZUNA_APP_KEY match your Adzuna dashboard exactly.'
+                : 'The jobs provider returned a non-JSON response. Check ADZUNA_APP_ID and ADZUNA_APP_KEY in Supabase secrets.',
+          },
+          502
+        )
+      }
+
+      if (!response.ok) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: data?.error || data?.message || 'Job API request failed',
+          },
+          response.status
+        )
+      }
+
+      if (Array.isArray(data?.results)) {
+        providerResults.push(...data.results)
+      }
+
+      if (uniqueJobs(providerResults).length >= limit) break
     }
 
-    if (!response.ok) {
-      return jsonResponse(
-        {
-          ok: false,
-          error: data?.error || data?.message || 'Job API request failed',
-        },
-        response.status
-      )
-    }
-
-    const jobs = Array.isArray(data?.results)
-      ? data.results
-          .map((job: any) => ({ job, relevanceScore: scoreJob(job, query, keywords) }))
-          .sort((a: any, b: any) => {
-            const scoreDiff = b.relevanceScore - a.relevanceScore
-            if (scoreDiff !== 0) return scoreDiff
-            return new Date(b.job?.created || 0).getTime() - new Date(a.job?.created || 0).getTime()
-          })
-          .slice(0, limit)
-          .map((item: any) => normalizeJob(item.job, item.relevanceScore))
-      : []
+    const jobs = uniqueJobs(providerResults)
+      .map((job: any) => ({ job, relevanceScore: scoreJob(job, query, keywords) }))
+      .sort((a: any, b: any) => {
+        const scoreDiff = b.relevanceScore - a.relevanceScore
+        if (scoreDiff !== 0) return scoreDiff
+        return new Date(b.job?.created || 0).getTime() - new Date(a.job?.created || 0).getTime()
+      })
+      .slice(0, limit)
+      .map((item: any) => normalizeJob(item.job, item.relevanceScore))
 
     return jsonResponse({
       ok: true,
